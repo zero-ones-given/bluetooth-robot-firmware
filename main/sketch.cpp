@@ -24,6 +24,95 @@ limitations under the License.
 #include <Arduino.h>
 #include <Bluepad32.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include "driver/gpio.h"
+#include "driver/mcpwm.h"
+
+#include "math.h"
+#include "stdio.h"
+
+// Pin definitions
+#define RIGHT_MOTOR_DIR_REVERSE GPIO_NUM_21
+#define RIGHT_MOTOR_DIR_FORWARD GPIO_NUM_23
+#define RIGHT_MOTOR_PWM         GPIO_NUM_19
+
+#define LEFT_MOTOR_DIR_REVERSE  GPIO_NUM_25
+#define LEFT_MOTOR_DIR_FORWARD  GPIO_NUM_33
+#define LEFT_MOTOR_PWM          GPIO_NUM_32
+
+#define MOTOR_DIR_PIN_SEL ((1ULL<<RIGHT_MOTOR_DIR_REVERSE) | (1ULL<<RIGHT_MOTOR_DIR_FORWARD) | (1ULL<<LEFT_MOTOR_DIR_REVERSE) | (1ULL<<LEFT_MOTOR_DIR_FORWARD))
+
+void gpio_init()
+{
+    Console.printf("Motor control GPIO init\n");
+    gpio_config_t io_conf;
+
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = MOTOR_DIR_PIN_SEL;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+
+    gpio_config(&io_conf);
+}
+
+void pwm_gpio_config()
+{
+    Console.printf("MCPWM GPIO init\n");
+    mcpwm_pin_config_t pin_config = {
+        .mcpwm0a_out_num = RIGHT_MOTOR_PWM,
+        .mcpwm0b_out_num = LEFT_MOTOR_PWM,
+    };
+
+    mcpwm_set_pin(MCPWM_UNIT_0, &pin_config);
+}
+
+void mcpwm_config()
+{
+    Console.printf("MCPWM init\n");
+    mcpwm_config_t pwm_config;
+
+    // low frequencies work better for driving the motor at low speeds
+    pwm_config.frequency = 20;     // frequency = 20Hz
+    pwm_config.cmpr_a = 0.0;       // initial duty cycle 0
+    pwm_config.cmpr_b = 0.0;       // initial duty cycle 0
+    pwm_config.counter_mode = MCPWM_UP_COUNTER;
+    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
+
+    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);
+}
+
+void motor_control_setup()
+{
+    gpio_init();
+    pwm_gpio_config();
+    mcpwm_config();
+}
+
+void set_motor_pwm(mcpwm_generator_t motor, float pwm)
+{
+    // set direction
+    if (motor == MCPWM_OPR_A) {
+        gpio_set_level(RIGHT_MOTOR_DIR_FORWARD, pwm >= 0);
+        gpio_set_level(RIGHT_MOTOR_DIR_REVERSE, pwm < 0);
+    }
+    if (motor == MCPWM_OPR_B) {
+        gpio_set_level(LEFT_MOTOR_DIR_FORWARD, pwm >= 0);
+        gpio_set_level(LEFT_MOTOR_DIR_REVERSE, pwm < 0);
+    }
+
+    float absolute_pwm = fabs(pwm);
+    // TODO: protect motor_x_pwm variables with mutexes
+    if (absolute_pwm > 100)
+    {
+        Console.printf("ERROR: Motor duty cycle cannot exceed 100 \n"); // TODO: make this a proper error log
+        absolute_pwm = 0;
+    }
+    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, motor, absolute_pwm);
+}
+
 //
 // README FIRST, README FIRST, README FIRST
 //
@@ -94,6 +183,8 @@ void setup() {
     // Forgetting Bluetooth keys prevents "paired" gamepads to reconnect.
     // But might also fix some connection / re-connection issues.
     BP32.forgetBluetoothKeys();
+
+    motor_control_setup();
 }
 
 // Arduino loop function. Runs in CPU 1
@@ -108,78 +199,29 @@ void loop() {
     // This guarantees that the gamepad is valid and connected.
     for (int i = 0; i < BP32_MAX_GAMEPADS; i++) {
         GamepadPtr myGamepad = myGamepads[i];
+        float rightMotor = 0.0;
+        float leftMotor = 0.0;
 
         if (myGamepad && myGamepad->isConnected()) {
-            // There are different ways to query whether a button is pressed.
-            // By query each button individually:
-            //  a(), b(), x(), y(), l1(), etc...
-            if (myGamepad->a()) {
-                static int colorIdx = 0;
-                // Some gamepads like DS4 and DualSense support changing the color LED.
-                // It is possible to change it by calling:
-                switch (colorIdx % 3) {
-                    case 0:
-                        // Red
-                        myGamepad->setColorLED(255, 0, 0);
-                        break;
-                    case 1:
-                        // Green
-                        myGamepad->setColorLED(0, 255, 0);
-                        break;
-                    case 2:
-                        // Blue
-                        myGamepad->setColorLED(0, 0, 255);
-                        break;
-                }
-                colorIdx++;
+            /*myGamepad->axisX(),        // (-511 - 512) left X Axis
+            myGamepad->axisY(),        // (-511 - 512) left Y axis
+            myGamepad->axisRX(),       // (-511 - 512) right X axis
+            myGamepad->axisRY(),       // (-511 - 512) right Y axis
+            myGamepad->brake(),        // (0 - 1023): brake button
+            myGamepad->throttle(),     // (0 - 1023): throttle (AKA gas) button*/
+
+            if (myGamepad->throttle() > 10) {
+                rightMotor = 20 + myGamepad->throttle() / 1023.0 * 80;
+                leftMotor = 20 + myGamepad->throttle() / 1023.0 * 80;
             }
 
-            if (myGamepad->b()) {
-                // Turn on the 4 LED. Each bit represents one LED.
-                static int led = 0;
-                led++;
-                // Some gamepads like the DS3, DualSense, Nintendo Wii, Nintendo Switch
-                // support changing the "Player LEDs": those 4 LEDs that usually indicate
-                // the "gamepad seat".
-                // It is possible to change them by calling:
-                myGamepad->setPlayerLEDs(led & 0x0f);
+            if (myGamepad->brake() > 10) {
+                rightMotor = -20 + myGamepad->brake() / 1023.0 * -80;
+                leftMotor = -20 + myGamepad->brake() / 1023.0 * -80;
             }
 
-            if (myGamepad->x()) {
-                // Duration: 255 is ~2 seconds
-                // force: intensity
-                // Some gamepads like DS3, DS4, DualSense, Switch, Xbox One S support
-                // rumble.
-                // It is possible to set it by calling:
-                myGamepad->setRumble(0xc0 /* force */, 0xc0 /* duration */);
-            }
-
-            // Another way to query the buttons, is by calling buttons(), or
-            // miscButtons() which return a bitmask.
-            // Some gamepads also have DPAD, axis and more.
-            Console.printf(
-                "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
-                "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
-                i,                         // Gamepad Index
-                myGamepad->dpad(),         // DPAD
-                myGamepad->buttons(),      // bitmask of pressed buttons
-                myGamepad->axisX(),        // (-511 - 512) left X Axis
-                myGamepad->axisY(),        // (-511 - 512) left Y axis
-                myGamepad->axisRX(),       // (-511 - 512) right X axis
-                myGamepad->axisRY(),       // (-511 - 512) right Y axis
-                myGamepad->brake(),        // (0 - 1023): brake button
-                myGamepad->throttle(),     // (0 - 1023): throttle (AKA gas) button
-                myGamepad->miscButtons(),  // bitmak of pressed "misc" buttons
-                myGamepad->gyroX(),        // Gyro X
-                myGamepad->gyroY(),        // Gyro Y
-                myGamepad->gyroZ(),        // Gyro Z
-                myGamepad->accelX(),       // Accelerometer X
-                myGamepad->accelY(),       // Accelerometer Y
-                myGamepad->accelZ()        // Accelerometer Z
-            );
-
-            // You can query the axis and other properties as well. See ArduinoController.h
-            // For all the available functions.
+            set_motor_pwm(MCPWM_OPR_A, rightMotor);
+            set_motor_pwm(MCPWM_OPR_B, leftMotor);
         }
     }
     // The main loop must have some kind of "yield to lower priority task" event.
@@ -188,6 +230,6 @@ void loop() {
     // Detailed info here:
     // https://stackoverflow.com/questions/66278271/task-watchdog-got-triggered-the-tasks-did-not-reset-the-watchdog-in-time
 
-    // vTaskDelay(1);
-    delay(150);
+    vTaskDelay(1);
+    //delay(150);
 }
