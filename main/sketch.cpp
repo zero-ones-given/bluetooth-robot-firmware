@@ -44,6 +44,8 @@ limitations under the License.
 
 #define MOTOR_DIR_PIN_SEL ((1ULL<<RIGHT_MOTOR_DIR_REVERSE) | (1ULL<<RIGHT_MOTOR_DIR_FORWARD) | (1ULL<<LEFT_MOTOR_DIR_REVERSE) | (1ULL<<LEFT_MOTOR_DIR_FORWARD))
 
+#define DEADBAND 8
+
 void gpio_init()
 {
     Console.printf("Motor control GPIO init\n");
@@ -111,6 +113,11 @@ void set_motor_pwm(mcpwm_generator_t motor, float pwm)
         absolute_pwm = 0;
     }
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, motor, absolute_pwm);
+}
+
+float limit_range(float value, float min, float max)
+{
+    return fminf(fmaxf(value, min), max);
 }
 
 //
@@ -210,15 +217,36 @@ void loop() {
             myGamepad->brake(),        // (0 - 1023): brake button
             myGamepad->throttle(),     // (0 - 1023): throttle (AKA gas) button*/
 
-            if (myGamepad->throttle() > 10) {
+            /*if (myGamepad->throttle() > DEADBAND) {
                 rightMotor = 20 + myGamepad->throttle() / 1023.0 * 80;
                 leftMotor = 20 + myGamepad->throttle() / 1023.0 * 80;
             }
 
-            if (myGamepad->brake() > 10) {
+            if (myGamepad->brake() > DEADBAND) {
                 rightMotor = -20 + myGamepad->brake() / 1023.0 * -80;
                 leftMotor = -20 + myGamepad->brake() / 1023.0 * -80;
+            }*/
+            float leftThumbX = myGamepad->axisX();
+            float leftThumbY = myGamepad->axisY();
+            float rightThumbX = myGamepad->axisRX();
+            float rightThumbY = myGamepad->axisRY();
+            float x = rightThumbX;
+            float y = rightThumbY;
+            if (fabs(leftThumbX) + fabs(leftThumbY) > fabs(rightThumbX) + fabs(rightThumbY)) {
+                x = leftThumbX;
+                y = leftThumbY;
             }
+
+            float thumbX = x / 512.0 * -100;
+            float thumbY = y / 512.0 * -100;
+            if (fabs(thumbX) < DEADBAND && fabs(thumbY) < DEADBAND)
+            {
+                thumbX = 0;
+                thumbY = 0;
+            }
+
+            rightMotor = limit_range(thumbY + thumbX, -100, 100);
+            leftMotor = limit_range(thumbY - thumbX, -100, 100);
 
             set_motor_pwm(MCPWM_OPR_A, rightMotor);
             set_motor_pwm(MCPWM_OPR_B, leftMotor);
