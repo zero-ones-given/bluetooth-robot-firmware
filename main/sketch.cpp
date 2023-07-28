@@ -44,7 +44,7 @@ limitations under the License.
 
 #define MOTOR_DIR_PIN_SEL ((1ULL<<RIGHT_MOTOR_DIR_REVERSE) | (1ULL<<RIGHT_MOTOR_DIR_FORWARD) | (1ULL<<LEFT_MOTOR_DIR_REVERSE) | (1ULL<<LEFT_MOTOR_DIR_FORWARD))
 
-#define DEADBAND 8
+#define DEADBAND 14
 
 void gpio_init()
 {
