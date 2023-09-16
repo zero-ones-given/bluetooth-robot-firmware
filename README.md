@@ -1,5 +1,6 @@
 # Zero Ones Given Bluetooth remote controlled robot
 
+- Clone the project with submodules: `git clone --recurse-submodules git@github.com:zero-ones-given/bluetooth-robot-firmware.git`
 - Install ESP-IDF 4.4.5
 - Configure python virtual env etc by running: `. $HOME/esp/esp-idf/export.sh`
 - Build `idf.py build`
