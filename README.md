@@ -6,8 +6,9 @@
 - Build `idf.py build`
 - Press the EN button on the ESP32 to enable programming mode
 - Flash and monitor: `idf.py -p /dev/cu.usbserial-0001 flash monitor` (replace the port with the appropriate one)
-- Find out the bluetooth mac address (should be printed out to console during startup) and use [sixaxispairer](https://github.com/user-none/sixaxispairer) or some other tool to write the mac address to the controller
-- `./bin/sixaxispairing xx:xx:xx:xx:xx:xx`
+- See [pairing instructions for your controller](https://bluepad32.readthedocs.io/en/stable/supported_gamepads/)
+    - If you're using a DS3 controller, find out the bluetooth mac address (should be printed out to console during startup) and use [sixaxispairer](https://github.com/user-none/sixaxispairer) or some other tool to write the mac address to the controller
+    - `./bin/sixaxispairing xx:xx:xx:xx:xx:xx`
 
 *Original readme of the template project below:*
 
