@@ -373,8 +373,8 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
 
 uint8_t btstack_init(void){
     // hard code bluetooth mac address the BT mac last octet is +2 from the base so to get F0:08:D1:C8:9E:12 wee need to set 0x10
-    uint8_t mac[6] = {0xF0, 0x08, 0xD1, 0xC8, 0x9E, 0x10};
-    esp_base_mac_addr_set(mac);
+    //uint8_t mac[6] = {0xF0, 0x08, 0xD1, 0xC8, 0x9E, 0x10};
+    //esp_base_mac_addr_set(mac);
 
     // Setup memory pools and run loop
     btstack_memory_init();

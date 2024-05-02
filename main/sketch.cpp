@@ -44,7 +44,7 @@ limitations under the License.
 
 #define MOTOR_DIR_PIN_SEL ((1ULL<<RIGHT_MOTOR_DIR_REVERSE) | (1ULL<<RIGHT_MOTOR_DIR_FORWARD) | (1ULL<<LEFT_MOTOR_DIR_REVERSE) | (1ULL<<LEFT_MOTOR_DIR_FORWARD))
 
-#define DEADBAND 14
+#define DEADBAND 10
 
 void gpio_init()
 {
@@ -237,8 +237,17 @@ void loop() {
                 y = leftThumbY;
             }
 
-            float thumbX = x / 512.0 * -100;
-            float thumbY = y / 512.0 * -100;
+            // make the joystic values x and y exponential such that the max value is still 512 but it's reached slower
+            x = x * fabs(x) / 512.0;
+            y = y * fabs(y) / 512.0;
+
+            int multiplier = -85;
+            if ((x > 0 && y < 0) || (x < 0 && y > 0)) {
+                multiplier = -55;
+            }
+
+            float thumbX = x / 512.0 * multiplier;
+            float thumbY = y / 512.0 * multiplier;
             if (fabs(thumbX) < DEADBAND && fabs(thumbY) < DEADBAND)
             {
                 thumbX = 0;
