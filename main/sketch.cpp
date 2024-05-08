@@ -230,8 +230,15 @@ void loop() {
             float leftThumbY = myGamepad->axisY();
             float rightThumbX = myGamepad->axisRX();
             float rightThumbY = myGamepad->axisRY();
-            float x = fmaxf(leftThumbX, rightThumbX);
-            float y = fmaxf(leftThumbY, rightThumbY);
+            float x = rightThumbX;
+            float y = rightThumbY;
+
+            if (fabs(leftThumbX) > fabs(rightThumbX)) {
+                x = leftThumbX;
+            }
+            if (fabs(leftThumbY) > fabs(rightThumbY)) {
+                y = leftThumbY;
+            }
 
             // make the joystic values x and y exponential such that the max value is still 512 but it's reached slower
             x = x * fabs(x) / 512.0;
