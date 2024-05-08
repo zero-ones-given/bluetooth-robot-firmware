@@ -232,8 +232,11 @@ void loop() {
             float rightThumbY = myGamepad->axisRY();
             float x = rightThumbX;
             float y = rightThumbY;
-            if (fabs(leftThumbX) + fabs(leftThumbY) > fabs(rightThumbX) + fabs(rightThumbY)) {
+
+            if (fabs(leftThumbX) > fabs(rightThumbX)) {
                 x = leftThumbX;
+            }
+            if (fabs(leftThumbY) > fabs(rightThumbY)) {
                 y = leftThumbY;
             }
 
