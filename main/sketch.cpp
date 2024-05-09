@@ -226,39 +226,54 @@ void loop() {
                 rightMotor = -20 + myGamepad->brake() / 1023.0 * -80;
                 leftMotor = -20 + myGamepad->brake() / 1023.0 * -80;
             }*/
-            float leftThumbX = myGamepad->axisX();
-            float leftThumbY = myGamepad->axisY();
-            float rightThumbX = myGamepad->axisRX();
-            float rightThumbY = myGamepad->axisRY();
-            float x = rightThumbX;
-            float y = rightThumbY;
+            float leftxValue = myGamepad->axisX();
+            float leftyValue = myGamepad->axisY();
+            float rightxValue = myGamepad->axisRX();
+            float rightyValue = myGamepad->axisRY();
+            float x = rightxValue;
+            float y = rightyValue;
+            uint8_t dPad = myGamepad->dpad();
 
-            if (fabs(leftThumbX) > fabs(rightThumbX)) {
-                x = leftThumbX;
+            if (fabs(leftxValue) > fabs(rightxValue)) {
+                x = leftxValue;
             }
-            if (fabs(leftThumbY) > fabs(rightThumbY)) {
-                y = leftThumbY;
+            if (fabs(leftyValue) > fabs(rightyValue)) {
+                y = leftyValue;
             }
 
             // make the joystic values x and y exponential such that the max value is still 512 but it's reached slower
             x = x * fabs(x) / 512.0;
             y = y * fabs(y) / 512.0;
 
-            int multiplier = -85;
-            if ((x > 0 && y < 0) || (x < 0 && y > 0)) {
-                multiplier = -55;
-            }
+            // set max value to 85 since the axis will be added together to get final motor values
+            // and the maximum values should be ~100 to avoid clipping
+            float maxValue = 85.0;
+            float xValue = x / -512.0 * maxValue;
+            float yValue = y / -512.0 * maxValue;
 
-            float thumbX = x / 512.0 * multiplier;
-            float thumbY = y / 512.0 * multiplier;
-            if (fabs(thumbX) < DEADBAND && fabs(thumbY) < DEADBAND)
+            if (fabs(xValue) < DEADBAND && fabs(yValue) < DEADBAND)
             {
-                thumbX = 0;
-                thumbY = 0;
+                xValue = 0;
+                yValue = 0;
             }
 
-            rightMotor = limit_range(thumbY + thumbX, -100, 100);
-            leftMotor = limit_range(thumbY - thumbX, -100, 100);
+            if (dPad == DPAD_UP || dPad == DPAD_UP + DPAD_RIGHT || dPad == DPAD_UP + DPAD_LEFT) {
+                yValue = maxValue;
+            }
+            if (dPad == DPAD_RIGHT || dPad == DPAD_RIGHT + DPAD_UP || dPad == DPAD_RIGHT + DPAD_DOWN) {
+                xValue = -maxValue;
+            }
+            if (dPad == DPAD_DOWN || dPad == DPAD_DOWN + DPAD_RIGHT || dPad == DPAD_DOWN + DPAD_LEFT) {
+                yValue = -maxValue;
+            }
+            if (dPad == DPAD_LEFT || dPad == DPAD_LEFT + DPAD_UP || dPad == DPAD_LEFT + DPAD_RIGHT) {
+                xValue = maxValue;
+            }
+
+            leftMotor = limit_range(yValue - xValue, -100, 100);
+            rightMotor = limit_range(yValue + xValue, -100, 100);
+
+            //Console.printf("dpad: %d x:%f y:%f max:%f xValue:%f yValue:%f leftMotor:%f rightMotor:%f\n", dPad, x, y, maxValue, xValue, yValue, leftMotor, rightMotor);
 
             set_motor_pwm(MCPWM_OPR_A, rightMotor);
             set_motor_pwm(MCPWM_OPR_B, leftMotor);
