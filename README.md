@@ -4,11 +4,19 @@
 - Install ESP-IDF 4.4.5
 - Configure python virtual env etc by running: `. $HOME/esp/esp-idf/export.sh`
 - Build `idf.py build`
+- If you get build errors after changing ESP-IDF version, try running `idf.py fullclean` and building again
 - Press the EN button on the ESP32 to enable programming mode
 - Flash and monitor: `idf.py -p /dev/cu.usbserial-0001 flash monitor` (replace the port with the appropriate one)
 - See [pairing instructions for your controller](https://bluepad32.readthedocs.io/en/stable/supported_gamepads/)
     - If you're using a DS3 controller, find out the bluetooth mac address (should be printed out to console during startup) and use [sixaxispairer](https://github.com/user-none/sixaxispairer) or some other tool to write the mac address to the controller
     - `./bin/sixaxispairing xx:xx:xx:xx:xx:xx`
+
+## Controls
+1) You can use either analog stick to control the robot.
+2) If you want to use both sticks, you can use the other to control turning and the other for controlling the speed forwards / backwards.
+3) The dpad can also be used to control the robot
+4) If the robot does not drive straight, you can hold the `start` / `home` button while pressing `right` / `left` on the dpad. This compensates the balance of the motors to favor the direction you pressed. The maximum compensation is reached after 10 button presses. This setting does not persist after a restart.
+5) You can reset the motor balance by holding the `start` / `home` button and pressing `up` or `down` on the dpad.
 
 *Original readme of the template project below:*
 
