@@ -15,7 +15,7 @@
 1) You can use either analog stick to control the robot.
 2) If you want to use both sticks, you can use the other to control turning and the other for controlling the speed forwards / backwards.
 3) The dpad can also be used to control the robot
-4) If the robot does not drive straight, you can hold the `start` / `home` button while pressing `right` / `left` on the dpad. This compensates the balance of the motors to favor the direction you pressed. The maximum compensation is reached after 10 button presses. This setting does not persist after a restart.
+4) If the robot does not drive straight, you can hold the `start` / `home` button while pressing `left` or `right` on the dpad. This compensates the balance of the motors to favor the direction you pressed. The maximum compensation is reached after 10 button presses. This setting does not persist after a restart.
 5) You can reset the motor balance by holding the `start` / `home` button and pressing `up` or `down` on the dpad.
 
 *Original readme of the template project below:*
