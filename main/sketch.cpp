@@ -46,6 +46,11 @@ limitations under the License.
 
 #define DEADBAND 10
 
+// this can be used to correct a bias in the robot direction
+// 50 = center, 0 = all the way left, 100 = all the way right
+int motorBalance = 50;
+bool isBalancePressed = false;
+
 void gpio_init()
 {
     Console.printf("Motor control GPIO init\n");
@@ -233,6 +238,7 @@ void loop() {
             float x = rightxValue;
             float y = rightyValue;
             uint8_t dPad = myGamepad->dpad();
+            bool isStartPressed = myGamepad->miscHome();
 
             if (fabs(leftxValue) > fabs(rightxValue)) {
                 x = leftxValue;
@@ -270,10 +276,29 @@ void loop() {
                 xValue = maxValue;
             }
 
-            leftMotor = limit_range(yValue - xValue, -100, 100);
-            rightMotor = limit_range(yValue + xValue, -100, 100);
+            // Adjust motor balance
+            if (dPad == DPAD_LEFT && isStartPressed && !isBalancePressed && motorBalance > 0) {
+                motorBalance-=5;
+                isBalancePressed = true;
+            }
+            if (dPad == DPAD_RIGHT && isStartPressed && !isBalancePressed && motorBalance < 100) {
+                motorBalance+=5;
+                isBalancePressed = true;
+            }
+            if ((dPad == DPAD_UP || dPad == DPAD_DOWN) && isStartPressed) {
+                motorBalance = 50;
+            }
+            if (dPad != DPAD_RIGHT && dPad != DPAD_LEFT) {
+                isBalancePressed = false;
+            }
 
-            //Console.printf("dpad: %d x:%f y:%f max:%f xValue:%f yValue:%f leftMotor:%f rightMotor:%f\n", dPad, x, y, maxValue, xValue, yValue, leftMotor, rightMotor);
+            // These multipliers are values between 0.5 and 1 that compensate for uneven motor power (due to mechanical differences)
+            float leftMultiplier = motorBalance < 50 ? 0.5 + (motorBalance / 100.0) : 1.0;
+            float rightMultiplier = motorBalance > 50 ? 1.5 - (motorBalance / 100.0) : 1.0;
+            leftMotor = limit_range(yValue - xValue, -100, 100) * leftMultiplier;
+            rightMotor = limit_range(yValue + xValue, -100, 100) * rightMultiplier;
+
+            // Console.printf("dpad: %d x:%f y:%f max:%f xValue:%f yValue:%f leftMotor:%f rightMotor:%f balance:%d\n", dPad, x, y, maxValue, xValue, yValue, leftMotor, rightMotor, motorBalance);
 
             set_motor_pwm(MCPWM_OPR_A, rightMotor);
             set_motor_pwm(MCPWM_OPR_B, leftMotor);
